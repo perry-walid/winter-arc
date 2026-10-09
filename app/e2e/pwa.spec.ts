@@ -42,3 +42,17 @@ test('PWA: manifest, icons, apple-touch-icon and service worker', async ({ page,
   })
   expect(scope).toBe(new URL('/winter-arc/', baseURL).toString())
 })
+
+test('PWA: works offline once the service worker has cached the app', async ({ page, context }) => {
+  await page.goto('./')
+  await page.evaluate(() => navigator.serviceWorker.ready)
+  await page.reload()
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller)
+
+  await context.setOffline(true)
+  await page.reload()
+  await expect(page.getByText('Install before you depart')).toBeVisible({ timeout: 10_000 })
+  expect(await page.evaluate(() => document.fonts.check('600 40px "Fraunces Variable"'))).toBe(true)
+  await page.getByRole('button', { name: 'Continue in Safari anyway' }).click()
+  await expect(page.getByRole('heading', { name: 'Prepare the expedition' })).toBeVisible()
+})
