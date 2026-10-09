@@ -35,6 +35,25 @@ export function Route({ s }: { s: ArcSummary }) {
   const pathD = (n: number) => pos.slice(0, n).map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ')
   const shielded = s.days.filter((d) => d.status === 'shielded').length
   const missed = s.days.filter((d) => d.status === 'missed').length
+  // Camps sit closer together than their 13-unit hit circles, so a later camp would swallow taps
+  // aimed at the one before it. Resolve a real tap to the nearest camp; a click without a pointer
+  // position (assistive tech, e.detail === 0) opens the camp it was sent to.
+  const onCampClick = (e: React.MouseEvent<SVGGElement>, i: number) => {
+    let best = i
+    const ctm = e.detail > 0 ? e.currentTarget.ownerSVGElement?.getScreenCTM() : null
+    if (ctm) {
+      const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse())
+      let bestDist = Infinity
+      pos.forEach(([x, y], j) => {
+        const dist = Math.hypot(x - pt.x, y - pt.y)
+        if (dist < bestDist) {
+          best = j
+          bestDist = dist
+        }
+      })
+    }
+    if (s.days[best].status !== 'future') setOpen(s.days[best])
+  }
 
   return (
     <div className="fade-in" style={{ height: '100%', minHeight: 560, display: 'flex', flexDirection: 'column', background: 'radial-gradient(circle at 50% 22%, #1b3470 0%, #0c1a40 38%, #060c22 75%)' }}>
@@ -74,7 +93,7 @@ export function Route({ s }: { s: ArcSummary }) {
         {s.days.map((d, i) => {
           const [x, y] = pos[i]
           return (
-            <g key={d.index} role="button" tabIndex={d.status === 'future' ? -1 : 0} aria-label={`Camp ${d.index}: ${STATUS_LABEL[d.status]}`} onClick={() => d.status !== 'future' && setOpen(d)} onKeyDown={(e) => e.key === 'Enter' && d.status !== 'future' && setOpen(d)} style={{ cursor: d.status === 'future' ? 'default' : 'pointer' }}>
+            <g key={d.index} role="button" tabIndex={d.status === 'future' ? -1 : 0} aria-label={`Camp ${d.index}: ${STATUS_LABEL[d.status]}`} onClick={(e) => onCampClick(e, i)} onKeyDown={(e) => e.key === 'Enter' && d.status !== 'future' && setOpen(d)} style={{ cursor: d.status === 'future' ? 'default' : 'pointer' }}>
               <circle cx={x} cy={y} r="13" fill="transparent" />
               <Dot d={d} x={x} y={y} landmark={!!LANDMARKS[d.index]} />
             </g>

@@ -127,7 +127,8 @@ export default function App() {
   }
 
   const bootLine = s && s.phase === 'active' ? `CAMP ${pad2(Math.min(60, s.todayIndex))}  ·  ${s.streak} UNBROKEN  ·  ${s.rank.title.toUpperCase()}` : null
-  const showGate = state && !arc && !gateDismissed && isIOS() && !isStandalone()
+  // Only before the very first expedition: after that, the user has already chosen where to keep the log.
+  const showGate = state && !arc && state.arcs.length === 0 && !gateDismissed && isIOS() && !isStandalone()
 
   return (
     <div className="app" id="app-root">
